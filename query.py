@@ -73,6 +73,8 @@ if not os.path.exists(credentials_path):
 	print('You need to add your credentials in "credentials.json" in the script folder.'); exit()
 with open(credentials_path, 'r', encoding='utf-8') as f:
 	data = json.load(f)
+	if data['username'] == 'Username' or data['password'] == 'Password':
+		print('You need to add your credentials in "credentials.json" in the script folder.'); exit()
 
 urls_path = f'{path}\\URLs.json'
 if not os.path.exists(urls_path):
