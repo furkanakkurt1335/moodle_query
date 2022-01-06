@@ -32,7 +32,8 @@ def get_grade_pages(sess):
 	grade_urls = re.findall(grade_url_pattern, grade_text)
 	grades = []
 	for i in grade_urls:
-		get_grade = sess.get(i.replace('amp;', ''))
+		grade_url = i.replace('amp;', '')
+		get_grade = sess.get(grade_url)
 		grade_text = get_grade.text
 		grade_text = grade_text[grade_text.index('Grades')+1:]
 		grade_text = grade_text[grade_text.index('Grades'):]
@@ -40,7 +41,7 @@ def get_grade_pages(sess):
 		course_code_pattern = '<li.*?>.*?([a-zA-Z]{2,4}[ \d]*).*?</li>'
 		course_code_found = re.search(course_code_pattern, grade_text)
 		if course_code_found: course_code = course_code_found.group(1).replace(' ', '')
-		grades.append((course_code, i))
+		grades.append((course_code, grade_url))
 	urls['Grades'] = grades
 	with open(urls_path, 'w', encoding='utf-8') as f:
 		json.dump(urls, f)
