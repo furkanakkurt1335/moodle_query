@@ -83,6 +83,8 @@ if not os.path.exists(urls_path):
 with open(urls_path, 'r', encoding='utf-8') as f:
 	urls = json.load(f)
 
+folder_path = f'{path}//Class Pages'
+if not os.path.exists(folder_path): os.mkdir(folder_path)
 folder_path = f'{path}//Grades'
 if not os.path.exists(folder_path): os.mkdir(folder_path)
 
