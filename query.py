@@ -58,10 +58,15 @@ def check_change(sess, page_list):
 			file_path = f'{path}\\{page_type}\\{i[0]}.html'
 			if not os.path.exists(file_path): open(file_path, 'w')
 			query_text = re.sub('\s', '', soup.text)
+			if 'Thiscourseiscurrentlyunavailabletostudents' in query_text:
+				open(urls_path, 'w', encoding='utf-8').write('{"Login": "https://moodle.boun.edu.tr/login/index.php", "Dashboard": "https://moodle.boun.edu.tr/my/", "Class Pages": [], "Grade": "https://moodle.boun.edu.tr/grade/report/overview/index.php", "Grades": []}')
+				print('Run again, A previous course was not available')
+				exit()
 			if 'LogInYoursessionhastimedout' in query_text or 'PleaseuseyourBOUNe' in query_text:
 				print('Error')
 				break
-			if query_text != open(file_path, 'r', encoding='utf-8').read():
+			old_text = open(file_path, 'r', encoding='utf-8').read()
+			if query_text != old_text:
 				if page_type_int == 0: print(f'{i[0]} Class Page changed')
 				else: print(f'{i[0]} Grades Page changed')
 				open(file_path, 'w', encoding='utf-8').write(query_text)
@@ -78,14 +83,14 @@ with open(credentials_path, 'r', encoding='utf-8') as f:
 		print('You need to add your credentials in "credentials.json" in the script folder.'); exit()
 
 urls_path = f'{path}\\URLs.json'
-if not os.path.exists(urls_path):
+if not os.path.exists(urls_path) or open(urls_path, 'r', encoding='utf-8').read() == '':
 	open(urls_path, 'w', encoding='utf-8').write('{"Login": "https://moodle.boun.edu.tr/login/index.php", "Dashboard": "https://moodle.boun.edu.tr/my/", "Class Pages": [], "Grade": "https://moodle.boun.edu.tr/grade/report/overview/index.php", "Grades": []}')
 with open(urls_path, 'r', encoding='utf-8') as f:
 	urls = json.load(f)
 
-folder_path = f'{path}//Class Pages'
+folder_path = f'{path}\\Class Pages'
 if not os.path.exists(folder_path): os.mkdir(folder_path)
-folder_path = f'{path}//Grades'
+folder_path = f'{path}\\Grades'
 if not os.path.exists(folder_path): os.mkdir(folder_path)
 
 with requests.session() as sess:
