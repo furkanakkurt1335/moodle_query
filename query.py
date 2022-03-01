@@ -56,7 +56,7 @@ def check_change(sess, page_list):
 			query = sess.get(i[1])
 			soup = BeautifulSoup(query.text, 'html.parser')
 			file_path = f'{path}\\{page_type}\\{i[0]}.html'
-			if not os.path.exists(file_path): open(file_path, 'w')
+			if not os.path.exists(file_path): open(file_path, 'w').close()
 			query_text = re.sub('\s', '', soup.text)
 			if 'Thiscourseiscurrentlyunavailabletostudents' in query_text:
 				open(urls_path, 'w', encoding='utf-8').write('{"Login": "https://moodle.boun.edu.tr/login/index.php", "Dashboard": "https://moodle.boun.edu.tr/my/", "Class Pages": [], "Grade": "https://moodle.boun.edu.tr/grade/report/overview/index.php", "Grades": []}')
@@ -65,8 +65,8 @@ def check_change(sess, page_list):
 			if 'LogInYoursessionhastimedout' in query_text or 'PleaseuseyourBOUNe' in query_text:
 				print('Error')
 				break
-			old_text = open(file_path, 'r', encoding='utf-8').read()
-			if query_text != old_text:
+			if page_type == 'Grades': query_text = query_text[:query_text.index('NavigationDashboardSitehomeSitepages')]
+			if query_text != open(file_path, 'r', encoding='utf-8').read():
 				if page_type_int == 0: print(f'{i[0]} Class Page changed')
 				else: print(f'{i[0]} Grades Page changed')
 				open(file_path, 'w', encoding='utf-8').write(query_text)
