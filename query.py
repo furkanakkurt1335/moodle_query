@@ -1,103 +1,138 @@
-import requests, re
+import requests, re, os, json
 from bs4 import BeautifulSoup
-import os
-import json
+from datetime import datetime
 
-def get_class_pages(sess):
-	dashboard_get = sess.get(urls['Dashboard'])
-	dashboard_text = dashboard_get.text
-	dashboard_text = dashboard_text[dashboard_text.index('My courses'):]
-	dashboard_text = dashboard_text[:dashboard_text.index('\n')]
-	course_pattern = '<a.*?href="(https://moodle.boun.edu.tr/course/view.php\?id=.*?)">(.*?)</a>'
-	course_list = re.findall(course_pattern, dashboard_text)
-	course_code_pattern = '[a-zA-Z]{2,4}[ \d]*'
-	courses = []
-	for i in course_list:
-		course_code_found = re.search(course_code_pattern, i[1])
-		if course_code_found:
-			course_code = course_code_found.group().replace(' ', '')
-			course_url = i[0]
-			courses.append((course_code, course_url))
-	urls['Class Pages'] = courses
-	with open(urls_path, 'w', encoding='utf-8') as f:
-		json.dump(urls, f)
-	return courses
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
-def get_grade_pages(sess):
-	grade_get = sess.get(urls['Grade'])
-	grade_text = grade_get.text
-	grade_text = grade_text[grade_text.index('Course name'):]
-	grade_text = grade_text[:grade_text.index('\n')]
-	grade_url_pattern = '<a.*?href="(https://moodle.boun.edu.tr/course/user.php\?mode=grade.*?)">.*?</a>'
-	grade_urls = re.findall(grade_url_pattern, grade_text)
-	grades = []
-	for i in grade_urls:
-		grade_url = i.replace('amp;', '')
-		get_grade = sess.get(grade_url)
-		grade_text = get_grade.text
-		grade_text = grade_text[grade_text.index('Grades')+1:]
-		grade_text = grade_text[grade_text.index('Grades'):]
-		grade_text = grade_text[:grade_text.index('User report')]
-		course_code_pattern = '<li.*?>.*?([a-zA-Z]{2,4}[ \d]*).*?</li>'
-		course_code_found = re.search(course_code_pattern, grade_text)
-		if course_code_found: course_code = course_code_found.group(1).replace(' ', '')
-		grades.append((course_code, grade_url))
-	urls['Grades'] = grades
-	with open(urls_path, 'w', encoding='utf-8') as f:
-		json.dump(urls, f)
-	return grades
+ts = str(datetime.now())
+term = '2022/2023-2'
 
-def check_change(sess, page_list):
-	types = ['Class Pages', 'Grades']
-	for page_type_int in range(2):
-		pages = page_list[page_type_int]
-		page_type = types[page_type_int]
-		for i in pages:
-			query = sess.get(i[1])
-			soup = BeautifulSoup(query.text, 'html.parser')
-			file_path = f'{path}\\{page_type}\\{i[0]}.html'
-			if not os.path.exists(file_path): open(file_path, 'w').close()
-			query_text = re.sub('\s', '', soup.text)
-			if 'Thiscourseiscurrentlyunavailabletostudents' in query_text:
-				open(urls_path, 'w', encoding='utf-8').write('{"Login": "https://moodle.boun.edu.tr/login/index.php", "Dashboard": "https://moodle.boun.edu.tr/my/", "Class Pages": [], "Grade": "https://moodle.boun.edu.tr/grade/report/overview/index.php", "Grades": []}')
-				print('Run again, A previous course was not available')
-				exit()
-			if 'LogInYoursessionhastimedout' in query_text or 'PleaseuseyourBOUNe' in query_text:
-				print('Error')
-				break
-			if page_type == 'Grades': query_text = query_text[:query_text.index('NavigationDashboardSitehomeSitepages')]
-			if query_text != open(file_path, 'r', encoding='utf-8').read():
-				if page_type_int == 0: print(f'{i[0]} Class Page changed')
-				else: print(f'{i[0]} Grades Page changed')
-				open(file_path, 'w', encoding='utf-8').write(query_text)
-
-path = os.path.dirname(os.path.realpath(__file__))
-
-credentials_path = f'{path}\\credentials.json'
+credentials_path = os.path.join(THIS_DIR, 'credentials.json')
 if not os.path.exists(credentials_path):
-	open(credentials_path, 'w', encoding='utf-8').write('{"username": "Username", "password": "Password"}')
-	print('You need to add your credentials in "credentials.json" in the script folder.'); exit()
+    with open(credentials_path, 'w', encoding='utf-8') as f:
+        f.write('{"username": null, "password": null}')
+    print('You need to add your credentials in "credentials.json" in the script folder.')
+    exit()
 with open(credentials_path, 'r', encoding='utf-8') as f:
-	data = json.load(f)
-	if data['username'] == 'Username' or data['password'] == 'Password':
-		print('You need to add your credentials in "credentials.json" in the script folder.'); exit()
+    data = json.load(f)
+    if data['username'] == None or data['password'] == None:
+        print('You need to add your credentials in "credentials.json" in the script folder.')
+        exit()
 
-urls_path = f'{path}\\URLs.json'
-if not os.path.exists(urls_path) or open(urls_path, 'r', encoding='utf-8').read() == '':
-	open(urls_path, 'w', encoding='utf-8').write('{"Login": "https://moodle.boun.edu.tr/login/index.php", "Dashboard": "https://moodle.boun.edu.tr/my/", "Class Pages": [], "Grade": "https://moodle.boun.edu.tr/grade/report/overview/index.php", "Grades": []}')
+urls_path = os.path.join(THIS_DIR, 'URLs.json')
+empty_urls_d = { "Login": "https://moodle.boun.edu.tr/login/index.php", "Dashboard": "https://moodle.boun.edu.tr/my/", "Pages": {} }
+if not os.path.exists(urls_path):
+    with open(urls_path, 'w', encoding='utf-8') as f:
+        json.dump(empty_urls_d, f)
+else:
+    with open(urls_path, 'r', encoding='utf-8') as f:
+        try:
+            urls = json.load(f)
+        except:
+            urls = {}
+    keys = ['Dashboard', 'Login', 'Pages']
+    for k in keys:
+        if k not in urls.keys():
+            with open(urls_path, 'w', encoding='utf-8') as f:
+                json.dump(empty_urls_d, f)
+                break
 with open(urls_path, 'r', encoding='utf-8') as f:
-	urls = json.load(f)
+    urls = json.load(f)
 
-folder_path = f'{path}\\Class Pages'
-if not os.path.exists(folder_path): os.mkdir(folder_path)
-folder_path = f'{path}\\Grades'
-if not os.path.exists(folder_path): os.mkdir(folder_path)
+pages_folder = os.path.join(THIS_DIR, 'Pages')
+if not os.path.exists(pages_folder):
+    os.mkdir(pages_folder)
 
-with requests.session() as sess:
-	login_post = sess.post(urls['Login'], data=data)
-	if urls['Class Pages'] != []: class_pages = urls['Class Pages']
-	else: class_pages = get_class_pages(sess)
-	if urls['Grades'] != []: grade_pages = urls['Grades']
-	else: grade_pages = get_grade_pages(sess)
-	check_change(sess, [class_pages, grade_pages])
-	
+sess = requests.session()
+login_post = sess.post(urls['Login'], data=data)
+
+def get_pages(sess):
+    urls['Pages'] = {}
+    course_pattern = f'{term} (.*?)$'
+    dashboard_get = sess.get(urls['Dashboard'])
+    dashboard_text = dashboard_get.text
+    soup = BeautifulSoup(dashboard_text, 'html.parser')
+    courses = soup.find('select', attrs={'name': 'course'}).find_all('option')
+    for course in courses:
+        course_find = re.search(course_pattern, course.text)
+        if course_find:
+            course_code = course_find.group(1)
+            course_id = course['value']
+            d_t = {'course_code': course_code, 'course_id': course_id, 'course_url': f'https://moodle.boun.edu.tr/course/view.php?id={course_id}', 'grade_url': f'https://moodle.boun.edu.tr/grade/report/user/index.php?id={course_id}'}
+            urls['Pages'][course_id] = d_t
+    with open(urls_path, 'w', encoding='utf-8') as f:
+        json.dump(urls, f, indent=4, ensure_ascii=False)
+    return urls['Pages']
+
+if urls['Pages'] != {}:
+    pages = urls['Pages']
+else:
+    pages = get_pages(sess)
+
+def check_change(sess, pages):
+    for course_id in pages.keys():
+        course = pages[course_id]
+        course_query = sess.get(course['course_url'])
+        cq_text = course_query.text
+        if 'This course is currently unavailable to students' in cq_text:
+            with open(urls_path, 'w', encoding='utf-8') as f:
+                json.dump(empty_urls_d, f)
+            print('Run again, A previous course was not available')
+            exit()
+        if 'Your session has timed out' in cq_text or 'Please use your BOUN' in cq_text:
+            print('Error')
+            break
+        soup = BeautifulSoup(cq_text, 'html.parser')
+        weeks = soup.find('ul', class_='weeks')
+        topics = soup.find('ul', class_='topics')
+        course_content = None
+        if weeks:
+            course_content = str(weeks)
+        elif topics:
+            course_content = str(topics)
+        if course_content == None:
+            print(f'{course["course_code"]} Course Page is not available')
+        else:
+            filepath = os.path.join(pages_folder, '{cc}_course.html'.format(cc=course['course_code']))
+            if not os.path.exists(filepath):
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(course_content)
+                    print('{cc} Course Page created, {ts}'.format(cc=course['course_code'], ts=ts))
+            else:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    previous_content = f.read()
+                if course_content != previous_content:
+                    print('{cc} Course Page changed, {ts}'.format(cc=course['course_code'], ts=ts))
+                    # beep(sound=1)
+                    previous_path = os.path.join(pages_folder, '{cc}_course-prev.html'.format(cc=course['course_code']))
+                    with open(previous_path, 'w', encoding='utf-8') as f:
+                        f.write(previous_content)
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        f.write(course_content)
+        grade_query = sess.get(course['grade_url'])
+        gq_text = grade_query.text
+        soup = BeautifulSoup(gq_text, 'html.parser')
+        grade_table = soup.find('table', class_='user-grade')
+        if grade_table == None:
+            print(f'{course["course_code"]} Grade Page is not available')
+            continue
+        else:
+            grade_table = str(grade_table)
+            filepath = os.path.join(pages_folder, '{cc}_grade.html'.format(cc=course['course_code']))
+            if not os.path.exists(filepath):
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(grade_table)
+                    print('{cc} Grade Page created, {ts}'.format(cc=course['course_code'], ts=ts))
+            else:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    previous_content = f.read()
+                if grade_table != previous_content:
+                    print('{cc} Grade Page changed, {ts}'.format(cc=course['course_code'], ts=ts))
+                    # beep(sound=1)
+                    previous_path = os.path.join(pages_folder, '{cc}_grade-prev.html'.format(cc=course['course_code']))
+                    with open(previous_path, 'w', encoding='utf-8') as f:
+                        f.write(previous_content)
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        f.write(grade_table)
+
+check_change(sess, pages)
