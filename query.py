@@ -1,11 +1,43 @@
-import requests, re, os, json
+import requests, re, os, json, argparse
 from bs4 import BeautifulSoup
 from datetime import datetime
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
+parser = argparse.ArgumentParser(description='Query Moodle for changes in course pages and grades.')
+parser.add_argument('-s', '--semester', type=str, help='Semester to query, e.g. 2022/2023-2')
+args = parser.parse_args()
+
+sem_pattern = r'^\d{4}/\d{4}-\d$'
+
+data_path = os.path.join(THIS_DIR, 'data.json')
+if not os.path.exists(data_path):
+    if args.semester:
+        semester = args.semester
+        sem_search = re.search(sem_pattern, semester)
+        if not sem_search:
+            print('Invalid semester format in arguments. Example: 2022/2023-2')
+            exit()
+        else:
+            semester = sem_search.group(0)
+            with open(data_path, 'w', encoding='utf-8') as f:
+                json.dump({'semester': semester}, f)
+    else:
+        semester = input('Semester: ')
+        sem_search = re.search(sem_pattern, semester)
+        if not sem_search:
+            print('Invalid semester format input. Example: 2022/2023-2')
+            exit()
+        else:
+            semester = sem_search.group(0)
+            with open(data_path, 'w', encoding='utf-8') as f:
+                json.dump({'semester': semester}, f)
+else:
+    with open(data_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        semester = data['semester']
+
 ts = str(datetime.now())
-term = '2022/2023-2'
 
 credentials_path = os.path.join(THIS_DIR, 'credentials.json')
 if not os.path.exists(credentials_path):
@@ -48,7 +80,7 @@ login_post = sess.post(urls['Login'], data=data)
 
 def get_pages(sess):
     urls['Pages'] = {}
-    course_pattern = f'{term} (.*?)$'
+    course_pattern = f'{semester} (.*?)$'
     dashboard_get = sess.get(urls['Dashboard'])
     dashboard_text = dashboard_get.text
     soup = BeautifulSoup(dashboard_text, 'html.parser')
