@@ -4,6 +4,8 @@ This script automatically queries if Moodle class / grade pages changed after th
 
 It's just a one-file script, `query.py`. It needs Python. After that's satisfied, "requirements" should be satisfied, which can be done with running the command `pip install -r requirements.txt`.
 
-The credentials should be entered in the file `credentials.json`. The semester is stored in the `semester` variable, in the format `year1/year2-term` (e.g. `2022/2023-2`).
+The credentials should be entered in the file `credentials.json`.
+
+The semester is stored in the `semester` variable, in the format `year1/year2-term` (e.g. `2022/2023-2`). It can be provided as a flag: `python3 query.py --semester 2022/2023-2` or input when asked.
 
 Requirements: `bs4, requests`
