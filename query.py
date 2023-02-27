@@ -5,7 +5,8 @@ import logging
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
-logging.basicConfig(filename='changes.log', format='%(asctime)s %(message)s')
+log_path = os.path.join(THIS_DIR, 'changes.log')
+logging.basicConfig(filename=log_path, level=logging.DEBUG, format='%(asctime)s %(message)s')
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Query Moodle for changes in course pages and grades.')
@@ -180,3 +181,4 @@ def check_change(sess, pages):
                         f.write(grade_table)
 
 check_change(sess, pages)
+logger.debug('1')
