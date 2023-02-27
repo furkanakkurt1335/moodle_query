@@ -1,8 +1,12 @@
 import requests, re, os, json, argparse
 from bs4 import BeautifulSoup
 from datetime import datetime
+import logging
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+
+logging.basicConfig(filename='changes.log', format='%(asctime)s %(message)s')
+logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Query Moodle for changes in course pages and grades.')
 parser.add_argument('-s', '--semester', type=str, help='Semester to query, e.g. 2022/2023-2')
@@ -129,12 +133,16 @@ def check_change(sess, pages):
             if not os.path.exists(filepath):
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(course_content)
-                    print('{cc} Course Page created, {ts}'.format(cc=course['course_code'], ts=ts))
+                    print_str = '{cc} Course Page created, {ts}'.format(cc=course['course_code'], ts=ts)
+                    print(print_str)
+                    logger.debug(print_str)
             else:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     previous_content = f.read()
                 if course_content != previous_content:
-                    print('{cc} Course Page changed, {ts}'.format(cc=course['course_code'], ts=ts))
+                    print_str = '{cc} Course Page changed, {ts}'.format(cc=course['course_code'], ts=ts)
+                    print(print_str)
+                    logger.debug(print_str)
                     # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_course-prev.html'.format(cc=course['course_code']))
                     with open(previous_path, 'w', encoding='utf-8') as f:
@@ -154,12 +162,16 @@ def check_change(sess, pages):
             if not os.path.exists(filepath):
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(grade_table)
-                    print('{cc} Grade Page created, {ts}'.format(cc=course['course_code'], ts=ts))
+                    print_str = '{cc} Grade Page created, {ts}'.format(cc=course['course_code'], ts=ts)
+                    print(print_str)
+                    logger.debug(print_str)
             else:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     previous_content = f.read()
                 if grade_table != previous_content:
-                    print('{cc} Grade Page changed, {ts}'.format(cc=course['course_code'], ts=ts))
+                    print_str = '{cc} Grade Page changed, {ts}'.format(cc=course['course_code'], ts=ts)
+                    print(print_str)
+                    logger.debug(print_str)
                     # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_grade-prev.html'.format(cc=course['course_code']))
                     with open(previous_path, 'w', encoding='utf-8') as f:
