@@ -6,7 +6,7 @@ import logging
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
 log_path = os.path.join(THIS_DIR, 'changes.log')
-logging.basicConfig(filename=log_path, level=logging.DEBUG, format='%(asctime)s %(message)s')
+logging.basicConfig(filename=log_path, level=logging.INFO, format='%(asctime)s %(message)s')
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Query Moodle for changes in course pages and grades.')
@@ -136,14 +136,14 @@ def check_change(sess, pages):
                     f.write(course_content)
                     print_str = '{cc} Course Page created, {ts}'.format(cc=course['course_code'], ts=ts)
                     print(print_str)
-                    logger.debug(print_str)
+                    logger.info(print_str)
             else:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     previous_content = f.read()
                 if course_content != previous_content:
                     print_str = '{cc} Course Page changed, {ts}'.format(cc=course['course_code'], ts=ts)
                     print(print_str)
-                    logger.debug(print_str)
+                    logger.info(print_str)
                     # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_course-prev.html'.format(cc=course['course_code']))
                     with open(previous_path, 'w', encoding='utf-8') as f:
@@ -165,14 +165,14 @@ def check_change(sess, pages):
                     f.write(grade_table)
                     print_str = '{cc} Grade Page created, {ts}'.format(cc=course['course_code'], ts=ts)
                     print(print_str)
-                    logger.debug(print_str)
+                    logger.info(print_str)
             else:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     previous_content = f.read()
                 if grade_table != previous_content:
                     print_str = '{cc} Grade Page changed, {ts}'.format(cc=course['course_code'], ts=ts)
                     print(print_str)
-                    logger.debug(print_str)
+                    logger.info(print_str)
                     # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_grade-prev.html'.format(cc=course['course_code']))
                     with open(previous_path, 'w', encoding='utf-8') as f:
@@ -181,4 +181,3 @@ def check_change(sess, pages):
                         f.write(grade_table)
 
 check_change(sess, pages)
-logger.debug('1')
