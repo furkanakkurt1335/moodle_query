@@ -42,8 +42,6 @@ else:
         data = json.load(f)
         semester = data['semester']
 
-ts = str(datetime.now())
-
 credentials_path = os.path.join(THIS_DIR, 'credentials.json')
 if not os.path.exists(credentials_path):
     with open(credentials_path, 'w', encoding='utf-8') as f:
@@ -106,6 +104,8 @@ if urls['Pages'] != {}:
 else:
     pages = get_pages(sess)
 
+ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 def check_change(sess, pages):
     for course_id in pages.keys():
         course = pages[course_id]
@@ -120,6 +120,8 @@ def check_change(sess, pages):
             print('Error')
             break
         soup = BeautifulSoup(cq_text, 'html.parser')
+        for act in soup.find_all('img', class_='activityicon'):
+            act.decompose()
         weeks = soup.find('ul', class_='weeks')
         topics = soup.find('ul', class_='topics')
         course_content = None
@@ -134,15 +136,15 @@ def check_change(sess, pages):
             if not os.path.exists(filepath):
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(course_content)
-                    print_str = '{cc} Course Page created, {ts}'.format(cc=course['course_code'], ts=ts)
-                    print(print_str)
+                    print_str = '{cc} Course Page created'.format(cc=course['course_code'])
+                    print(print_str, ts)
                     logger.info(print_str)
             else:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     previous_content = f.read()
                 if course_content != previous_content:
-                    print_str = '{cc} Course Page changed, {ts}'.format(cc=course['course_code'], ts=ts)
-                    print(print_str)
+                    print_str = '{cc} Course Page changed'.format(cc=course['course_code'])
+                    print(print_str, ts)
                     logger.info(print_str)
                     # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_course-prev.html'.format(cc=course['course_code']))
@@ -153,6 +155,8 @@ def check_change(sess, pages):
         grade_query = sess.get(course['grade_url'])
         gq_text = grade_query.text
         soup = BeautifulSoup(gq_text, 'html.parser')
+        for act in soup.find_all('img', class_='itemicon'):
+            act.decompose()
         grade_table = soup.find('table', class_='user-grade')
         if grade_table == None:
             print(f'{course["course_code"]} Grade Page is not available')
@@ -163,15 +167,15 @@ def check_change(sess, pages):
             if not os.path.exists(filepath):
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(grade_table)
-                    print_str = '{cc} Grade Page created, {ts}'.format(cc=course['course_code'], ts=ts)
-                    print(print_str)
+                    print_str = '{cc} Grade Page created'.format(cc=course['course_code'])
+                    print(print_str, ts)
                     logger.info(print_str)
             else:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     previous_content = f.read()
                 if grade_table != previous_content:
-                    print_str = '{cc} Grade Page changed, {ts}'.format(cc=course['course_code'], ts=ts)
-                    print(print_str)
+                    print_str = '{cc} Grade Page changed'.format(cc=course['course_code'])
+                    print(print_str, ts)
                     logger.info(print_str)
                     # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_grade-prev.html'.format(cc=course['course_code']))
