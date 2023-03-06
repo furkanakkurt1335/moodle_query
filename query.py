@@ -126,7 +126,8 @@ def check_change(sess, pages):
         topics = soup.find('ul', class_='topics')
         course_content = None
         if weeks:
-            course_content = str(weeks)
+            soup.find('span', class_='order-1').decompose()
+            course_content = str(weeks).replace('\n\n', '\n')
         elif topics:
             course_content = str(topics)
         if course_content == None:
