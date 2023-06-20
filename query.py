@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import logging
 
+print('Checking for changes on Moodle...')
+
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
 log_path = os.path.join(THIS_DIR, 'changes.log')
@@ -21,78 +23,57 @@ with open(credentials_path, 'r', encoding='utf-8') as f:
         print('You need to add your credentials in "credentials.json" in the script folder.')
         exit()
 
-urls_path = os.path.join(THIS_DIR, 'URLs.json')
-empty_urls_d = { "login": "https://moodle.boun.edu.tr/login/index.php", "dashboard": "https://moodle.boun.edu.tr/my/", "pages": dict() }
-if not os.path.exists(urls_path):
-    with open(urls_path, 'w', encoding='utf-8') as f:
-        json.dump(empty_urls_d, f)
-else:
-    with open(urls_path, 'r', encoding='utf-8') as f:
-        try:
-            urls = json.load(f)
-        except:
-            urls = {}
-    keys = ['dashboard', 'login', 'pages']
-    for k in keys:
-        if k not in urls.keys():
-            with open(urls_path, 'w', encoding='utf-8') as f:
-                json.dump(empty_urls_d, f)
-                break
-with open(urls_path, 'r', encoding='utf-8') as f:
-    urls = json.load(f)
+urls_d = { "login": "https://moodle.boun.edu.tr/login/index.php", "courses": "https://moodle.boun.edu.tr/my" }
 
-pages_folder = os.path.join(THIS_DIR, 'Pages')
+pages_folder = os.path.join(THIS_DIR, 'pages')
 if not os.path.exists(pages_folder):
     os.mkdir(pages_folder)
 
 sess = requests.session()
-login_post = sess.post(urls['login'], data=data)
+login_post = sess.post(urls_d['login'], data=data)
 
 def get_pages(sess):
-    urls['pages'] = dict()
+    pages_d = dict()
     course_pattern = '(\d{4}/\d{4}-\d) (.*?)$'
-    dashboard_get = sess.get(urls['dashboard'])
-    dashboard_text = dashboard_get.text
-    soup = BeautifulSoup(dashboard_text, 'html.parser')
+    courses_get = sess.get(urls_d['courses'])
+    soup = BeautifulSoup(courses_get.text, 'html.parser')
     courses = soup.find('select', attrs={'name': 'course'}).find_all('option')
-    sem_s = set()
+    sem_l = list()
     for course in courses:
         course_find = re.search(course_pattern, course.text)
         if course_find:
             sem = course_find.group(1)
-            if len(sem_s) == 0:
-                print('Semester:', sem)
-            sem_s.add(sem)
-            if len(sem_s) > 1:
-                break
+            sem_l.append(sem)
+    sel_sem = sorted(sem_l)[-1]
+    print('Semester selected:', sel_sem)
+    for course in courses:
+        course_find = re.search(course_pattern, course.text)
+        if course_find:
+            sem = course_find.group(1)
+            if sem != sel_sem:
+                continue
             course_code = course_find.group(2)
             course_id = course['value']
             d_t = {'course_code': course_code, 'course_id': course_id, 'course_url': 'https://moodle.boun.edu.tr/course/view.php?id={}'.format(course_id), 'grade_url': 'https://moodle.boun.edu.tr/grade/report/user/index.php?id={}'.format(course_id)}
-            urls['pages'][course_id] = d_t
-    with open(urls_path, 'w', encoding='utf-8') as f:
-        json.dump(urls, f, indent=4, ensure_ascii=False)
-    return urls['pages']
+            pages_d[course_code] = d_t
+    return pages_d
 
-if urls['pages']:
-    pages = urls['pages']
-else:
-    pages = get_pages(sess)
+pages_d = get_pages(sess)
+print(pages_d)
 
 ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 def check_change(sess, pages):
-    for course_id in pages.keys():
-        course = pages[course_id]
+    for course_code in pages:
+        course = pages[course_code]
         course_query = sess.get(course['course_url'])
         cq_text = course_query.text
         if 'This course is currently unavailable to students' in cq_text:
-            with open(urls_path, 'w', encoding='utf-8') as f:
-                json.dump(empty_urls_d, f)
-            print('Run again, A previous course was not available')
-            exit()
-        if 'Your session has timed out' in cq_text or 'Please use your BOUN' in cq_text:
-            print('Error')
-            break
+            print('Course page of %s is not available' % course['course_code'])
+            continue
+        elif 'Your session has timed out' in cq_text or 'Please use your BOUN' in cq_text:
+            print('Session timed out. Please run the script again.')
+            continue
         soup = BeautifulSoup(cq_text, 'html.parser')
         for act in soup.find_all('img', class_='activityicon'):
             act.decompose()
@@ -123,7 +104,6 @@ def check_change(sess, pages):
                     print_str = 'Course page of %s changed' % course['course_code']
                     print(print_str, ts)
                     logger.info(print_str)
-                    # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_course-prev.html'.format(cc=course['course_code']))
                     with open(previous_path, 'w', encoding='utf-8') as f:
                         f.write(previous_content)
@@ -154,11 +134,10 @@ def check_change(sess, pages):
                     print_str = 'Grade page of %s changed' % course['course_code']
                     print(print_str, ts)
                     logger.info(print_str)
-                    # beep(sound=1)
                     previous_path = os.path.join(pages_folder, '{cc}_grade-prev.html'.format(cc=course['course_code']))
                     with open(previous_path, 'w', encoding='utf-8') as f:
                         f.write(previous_content)
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(grade_table)
 
-check_change(sess, pages)
+check_change(sess, pages_d)
