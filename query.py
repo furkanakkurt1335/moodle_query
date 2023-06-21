@@ -45,7 +45,7 @@ def get_pages(sess):
             sem = course_find.group(1)
             sem_l.append(sem)
     sel_sem = sorted(sem_l)[-1]
-    print('Semester selected:', sel_sem)
+    print('Semester:', sel_sem)
     for course in courses:
         course_find = re.search(course_pattern, course.text)
         if course_find:
@@ -59,7 +59,6 @@ def get_pages(sess):
     return pages_d
 
 pages_d = get_pages(sess)
-print(pages_d)
 
 ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
