@@ -89,6 +89,7 @@ def check_change(sess, pages):
         if course_content == None:
             print('Course page of %s is not available' % course['course_code'])
         else:
+            course_content = course_content.replace('\r', '')
             filepath = os.path.join(pages_folder, '{cc}_course.html'.format(cc=course['course_code']))
             if not os.path.exists(filepath):
                 with open(filepath, 'w', encoding='utf-8') as f:
